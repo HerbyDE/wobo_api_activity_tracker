@@ -1,4 +1,5 @@
 # Default ignores
+.idea/*
 venv/*
 *.xlsx
 
