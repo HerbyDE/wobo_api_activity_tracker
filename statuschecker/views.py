@@ -1,60 +1,134 @@
-from django.shortcuts import render
 from openpyxl import Workbook
+from datetime import date, datetime, timedelta
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 import requests
 import json
 
 # Create your views here.
+# Settings
+HERBERT_WOBO = '23bbb528dc93cc6ca0a1a828b3a99195a77dbfad'
+BRADLEY_WOBO = '848e37043e042ae16a97145c194d3d06cdb95572'
+SENDGRID_API = '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'
 
-# Herberts Token: 23bbb528dc93cc6ca0a1a828b3a99195a77dbfad
-# Bradleys Token: 848e37043e042ae16a97145c194d3d06cdb95572
 
-
-def establish_wobo_connection(model='team', identifier=None):
-    print('Establishing connection...')
+def establish_wobo_connection(model='team', identifier='', params=frozenset()):
     
     # Here we are establishing a HTTP GET connection to WorkBoard's REST API. To keep this dynamic we allow two
     # variables: model, which is the kind of data model we want to pull and identifier, which is to specify certain
     # items we might want to pull from the API.
     # The 'Authorization' header is necessary as we need to prove our identity to WorkBoard.
-    req = requests.get(url='https://www.myworkboard.com/wb/apis/{}/{}'.format(model, identifier),
-                       headers={'Authorization': "bearer 848e37043e042ae16a97145c194d3d06cdb95572"},
+    url = 'https://www.myworkboard.com/wb/apis/{}/{}'.format(model, identifier)
+    print('Connecting to {}. Please wait as we generate the output.'. format(url))
+    req = requests.get(url=url,
+                       headers={'Authorization': "bearer {}".format(BRADLEY_WOBO)},
+                       params=params,
                        )
     
-    return req
-
-
-def build_teams(identifier=None):
-    # Here we are using the 'establish_wobo_connection' method to fetch data from WorkBoard's API, specifically for all
-    # teams which the API key owner is a part of.
-    response = establish_wobo_connection(model='team')
+    data = json.loads(req.text)
     
-    # If we get a valid connection (HTTP status 200) we proceed with reading the data as JSON format.
-    if response.status_code == 200:
-        data = json.loads(response.text)
-        
-        wb = Workbook()
-        ws = wb.active
-        
-        # This part allows us to extract relevant data from the HTTP response we got from WoBo.
-        teams = data['data']['team']
-        
-        # here we define all column names through putting them into a list. Before doing so we convert the keys into a
-        # list. The asterisk extracts the values from the 'dict_values'.
-        column_names = [*teams[0].keys()]
-        ws.append(column_names)
-        
-        # We create a a row for every team returned by WoBo. Instead of using the keys we extract the values here.
-        for team in teams:
-            ws.append([*team.values()])
-            
-        # Here we save our workbook to an actual XLSX file.
-        wb.save('text.xlsx')
-       
-    else:
-        raise BrokenPipeError("You fucked up. Your request was invalid....")
+    return {'status_code': req.status_code, 'data': data}
 
+
+def get_objectives(identifier=None):
+    
+    if identifier:
+        response = establish_wobo_connection(model='goal', identifier=identifier)
+    else:
+        response = establish_wobo_connection(model='goal')
+    
+    if response['status_code'] == 200:
+        data = response['data']
+        
+        return data
+    else:
+        raise BrokenPipeError('There was an error processing your Objectives request.')
+    
+    
+def get_teams(identifier=''):
+
+    if identifier:
+        response = establish_wobo_connection(model='team', identifier=identifier)
+    else:
+        response = establish_wobo_connection(model='team')
+
+    if response['status_code'] == 200:
+        data = response['data']
+    
+        return data
+    else:
+        raise BrokenPipeError('There was an error processing your Teams request.')
+        
+        
+def get_key_results(identifier=''):
+
+    if identifier:
+        response = establish_wobo_connection(model='metric', identifier=identifier)
+    else:
+        response = establish_wobo_connection(model='metric')
+
+    if response['status_code'] == 200:
+        data = response['data']
+    
+        return data
+    else:
+        raise BrokenPipeError('There was an error processing your Metrics request.')
+
+
+def build_data_sheet(team=None):
+    '''
+    This function unites all partial functions above so that we can fetch all relevant data from WorkBoard's API and
+    process it here.
+    :param team: The identifier may be used to specify a certain team and their respective stats.
+    :return:
+    '''
+    
+    teams = get_teams(identifier=team)['data']
+    owners = get_objectives()['data']
+    key_results = get_key_results()['data']
+    print('Connection successful. All data has been fetched. We are now preparing your export.')
+    
+    wb = Workbook()
+    
+    # Create an overview of all teams the user is part of.
+    ts = wb.active
+    ts.title = 'Teams'
+    
+    col_names = [*teams['team'][0].keys()]
+    ts.append(col_names)
+    for team in teams['team']:
+        ts.append([*team.values()])
+
+    # Create an overview of all objectives the user contributes to.
+    os = wb.create_sheet('Objectives')
+
+    col_names = ['Owner ID', 'Owner', 'Objective ID', 'Objective', 'Date created', 'Date modified', 'Start date',
+                 'End date', 'Progress', 'Follow up necessary']
+    os.append(col_names)
+    for owner in owners['goal']:
+        for goal in owner['people_goals']:
+            li = [owner['user_id'], owner['user_email']]
+            li += [goal['goal_id'], goal['goal_name'],
+                   datetime.fromtimestamp(int(goal['goal_create_at'])), datetime.fromtimestamp(int(goal['goal_modified_at'])),
+                   datetime.fromtimestamp(int(goal['goal_start_date'])), datetime.fromtimestamp(int(goal['goal_target_date'])),
+                   float(goal['goal_progress']), ]
+            
+            # Determine update-overdue status
+            if datetime.now() - timedelta(weeks=2) > datetime.fromtimestamp(int(goal['goal_modified_at'])) and \
+                    float(goal['goal_progress']) < 100:
+                overdue = 1
+            else:
+                overdue = 0
+                
+            li += [overdue]
+        
+            os.append(li)
+    
+    # Save the Excel workbook.
+    wb.save('wobo_export.xlsx')
+    
 
 if __name__ == '__main__':
-    build_teams()
+    build_data_sheet()
 
