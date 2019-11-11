@@ -1,4 +1,5 @@
 from openpyxl import Workbook
+from openpyxl.worksheet.table import Table, TableStyleInfo
 from datetime import date, datetime, timedelta
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
@@ -86,7 +87,6 @@ def build_data_sheet(team=None):
     
     teams = get_teams(identifier=team)['data']
     owners = get_objectives()['data']
-    key_results = get_key_results()['data']
     print('Connection successful. All data has been fetched. We are now preparing your export.')
     
     wb = Workbook()
@@ -102,10 +102,16 @@ def build_data_sheet(team=None):
 
     # Create an overview of all objectives the user contributes to.
     os = wb.create_sheet('Objectives')
-
     col_names = ['Owner ID', 'Owner', 'Objective ID', 'Objective', 'Date created', 'Date modified', 'Start date',
                  'End date', 'Progress', 'Follow up necessary']
     os.append(col_names)
+    
+    # Create an overview of all key results the user contributes to.
+    ks = wb.create_sheet('Key Results')
+    col_names = ['Owner ID', 'Owner', 'Objective ID', 'Objective', 'Metric name', 'Progress', 'Date created', 'Date modified',
+                 'Last update', 'Next update', 'Follow up necessary']
+    ks.append(col_names)
+    
     for owner in owners['goal']:
         for goal in owner['people_goals']:
             li = [owner['user_id'], owner['user_email']]
@@ -117,16 +123,30 @@ def build_data_sheet(team=None):
             # Determine update-overdue status
             if datetime.now() - timedelta(weeks=2) > datetime.fromtimestamp(int(goal['goal_modified_at'])) and \
                     float(goal['goal_progress']) < 100:
-                overdue = 1
+                li += [1]
             else:
-                overdue = 0
-                
-            li += [overdue]
-        
+                li += [0]
+
             os.append(li)
+                
+            # Evaluate all key results associated with the objective.
+            for metric in goal['goal_metrics']:
+                kl = [owner['user_id'], owner['user_email'], goal['goal_id'], goal['goal_name'], metric['metric_name'], float(metric['metric_progress']),
+                      datetime.fromtimestamp(int(metric['metric_create_at'])), datetime.fromtimestamp(int(metric['metric_modified_at'])),
+                      datetime.fromtimestamp(int(metric['metric_last_update'])), datetime.fromtimestamp(int(metric['metric_next_update']))]
+
+                if datetime.now() > datetime.fromtimestamp(int(metric['metric_next_update'])) and float(metric['metric_progress']) < 100:
+                    kl += [1]
+                else:
+                    kl += [0]
+                    
+                ks.append(kl)
+        
+            
     
     # Save the Excel workbook.
     wb.save('wobo_export.xlsx')
+    print('Workbook saved! Have fun.')
     
 
 if __name__ == '__main__':
