@@ -4,3 +4,4 @@ venv/*
 *.xlsx
 
 # Custom ignores
+*.sqlite3
