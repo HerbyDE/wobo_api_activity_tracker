@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from openpyxl import Workbook
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from datetime import date, datetime, timedelta
@@ -6,6 +8,7 @@ from sendgrid.helpers.mail import Mail
 
 import requests
 import json
+import os
 
 # Create your views here.
 # Settings
@@ -73,7 +76,7 @@ def get_key_results(identifier=''):
         raise BrokenPipeError('There was an error processing your Metrics request.')
 
 
-def build_data_sheet(team=None):
+def build_data_sheet(team=None, api_key=None):
     '''
     This function unites all partial functions above so that we can fetch all relevant data from WorkBoard's API and
     process it here.
@@ -97,10 +100,10 @@ def build_data_sheet(team=None):
         ts.append([*team.values()])
     
     # Create an overview of all objectives the user contributes to.
-    os = wb.create_sheet('Objectives')
+    obs = wb.create_sheet('Objectives')
     col_names = ['Owner ID', 'Owner', 'Objective ID', 'Objective', 'Date created', 'Date modified', 'Start date',
                  'End date', 'Progress', 'Follow up necessary']
-    os.append(col_names)
+    obs.append(col_names)
     
     # Create an overview of all key results the user contributes to.
     ks = wb.create_sheet('Key Results')
@@ -126,7 +129,7 @@ def build_data_sheet(team=None):
             else:
                 li += [0]
             
-            os.append(li)
+            obs.append(li)
             
             # Evaluate all key results associated with the objective.
             for metric in goal['goal_metrics']:
@@ -146,8 +149,14 @@ def build_data_sheet(team=None):
                 ks.append(kl)
     
     # Save the Excel workbook.
-    wb.save('wobo_export.xlsx')
-    print('Workbook saved! Have fun.')
+    if api_key:
+        path = 'media/export/{}.xlsx'.format(api_key)
+    else:
+        path = 'media/export/wobo_export.xlsx'
+    
+    wb.save(path)
+    
+    return path
 
 
 if __name__ == '__main__':

@@ -5,16 +5,20 @@
 <head>
   <meta charset="UTF-8">
   <title>{% block page-title %}{% endblock %} | Detecon USA</title>
-  <link rel="icon" href="{% static '' %}"/>
+  <link rel="icon" href="{% static 'images/Detecon_Favicon.jpg' %}"/>
   <!-- Compiled and minified CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
 </head>
 <body>
   <nav class="blue darken-4" role="navigation">
-    <div class="nav-wrapper container"><a id="logo-container" href="#" class="brand-logo">Logo</a>
+    <div class="nav-wrapper container"><a id="logo-container" href="/" class="brand-logo">
+      <img src="{% static 'images/Detecon_DT_Group_white.png' %}" height="40" style="margin-top: 12px;"/>
+    </a>
       <ul class="right hide-on-med-and-down">
         <li><a href="/">Home</a></li>
+        <li><a href="/export/">WoBo Exports</a></li>
       </ul>
 
       <ul id="nav-mobile" class="sidenav">
@@ -66,8 +70,6 @@
 
   <!-- Compiled and minified JavaScript -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-  <script src="js/materialize.js"></script>
-  <script src="js/init.js"></script>
 
 </body>
 </html>
