@@ -48,14 +48,6 @@
               </tr>
             </thead>
             <tbody>
-              {% for export in exports %}
-                <tr>
-                  <td>{{ forloop.counter }}</td>
-                  <td>{{ export.date_created }}</td>
-                  <td>{{ export.user.email }}</td>
-                  <td>{% if export.file %}<a href="/{{ export.file }}" download>Download</a>{% else %}No file{% endif %}</td>
-                </tr>
-              {% endfor %}
             </tbody>
           </table>
         </div>

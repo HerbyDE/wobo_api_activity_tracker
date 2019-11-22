@@ -17,15 +17,22 @@ BRADLEY_WOBO = '848e37043e042ae16a97145c194d3d06cdb95572'
 SENDGRID_API = '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'
 
 
-def establish_wobo_connection(model='team', identifier='', params=frozenset()):
+def establish_wobo_connection(model='team', identifier='', params={}, api_key=None):
     # Here we are establishing a HTTP GET connection to WorkBoard's REST API. To keep this dynamic we allow two
     # variables: model, which is the kind of data model we want to pull and identifier, which is to specify certain
     # items we might want to pull from the API.
     # The 'Authorization' header is necessary as we need to prove our identity to WorkBoard.
     url = 'https://www.myworkboard.com/wb/apis/{}/{}'.format(model, identifier)
     print('Connecting to {}. Please wait as we generate the output.'.format(url))
+    
+    if api_key:
+        headers = {'Authorization': "bearer {}".format(api_key)}
+    else:
+        # Detecon internal use with Bradley's API key.
+        headers = {'Authorization': "bearer {}".format(BRADLEY_WOBO)}
+    
     req = requests.get(url=url,
-                       headers={'Authorization': "bearer {}".format(BRADLEY_WOBO)},
+                       headers=headers,
                        params=params,
                        )
     
@@ -34,11 +41,11 @@ def establish_wobo_connection(model='team', identifier='', params=frozenset()):
     return {'status_code': req.status_code, 'data': data}
 
 
-def get_objectives(identifier=None):
+def get_objectives(identifier=None, api_key=None):
     if identifier:
-        response = establish_wobo_connection(model='goal', identifier=identifier)
+        response = establish_wobo_connection(model='goal', identifier=identifier, api_key=api_key)
     else:
-        response = establish_wobo_connection(model='goal')
+        response = establish_wobo_connection(model='goal', api_key=api_key)
     
     if response['status_code'] == 200:
         data = response['data']
@@ -48,11 +55,11 @@ def get_objectives(identifier=None):
         raise BrokenPipeError('There was an error processing your Objectives request.')
 
 
-def get_teams(identifier=''):
+def get_teams(identifier='', api_key=None):
     if identifier:
-        response = establish_wobo_connection(model='team', identifier=identifier)
+        response = establish_wobo_connection(model='team', identifier=identifier, api_key=api_key)
     else:
-        response = establish_wobo_connection(model='team')
+        response = establish_wobo_connection(model='team', api_key=api_key)
     
     if response['status_code'] == 200:
         data = response['data']
@@ -62,11 +69,11 @@ def get_teams(identifier=''):
         raise BrokenPipeError('There was an error processing your Teams request.')
 
 
-def get_key_results(identifier=''):
+def get_key_results(identifier='', api_key=None):
     if identifier:
-        response = establish_wobo_connection(model='metric', identifier=identifier)
+        response = establish_wobo_connection(model='metric', identifier=identifier, api_key=api_key)
     else:
-        response = establish_wobo_connection(model='metric')
+        response = establish_wobo_connection(model='metric', api_key=api_key)
     
     if response['status_code'] == 200:
         data = response['data']
@@ -74,7 +81,23 @@ def get_key_results(identifier=''):
         return data
     else:
         raise BrokenPipeError('There was an error processing your Metrics request.')
+    
 
+def get_users(identifier='', api_key=None):
+    
+    params = {'include': 'team_members'}
+    
+    if identifier:
+        response = establish_wobo_connection(model='user', identifier=identifier, api_key=api_key, params=params)
+    else:
+        response = establish_wobo_connection(model='user', api_key=api_key, params=params)
+    
+    if response['status_code'] == 200:
+        data = response['data']
+        return data
+    else:
+        raise BrokenPipeError('There was an error processing your Metrics request.')
+    
 
 def build_data_sheet(team=None, api_key=None):
     '''

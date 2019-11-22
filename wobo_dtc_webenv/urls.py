@@ -19,11 +19,12 @@ from django.conf import settings
 from django.views.static import serve
 from django.conf.urls.static import static
 
-from mailing_machine.views import index, create_new_export
+from mailing_machine.views import index, create_new_export, schedule_sessions
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', admin.site.urls),
     path('', index),
     path('export/', create_new_export),
+    path('schedule/', schedule_sessions)
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
