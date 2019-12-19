@@ -6,8 +6,7 @@ from django.utils.translation import ugettext_lazy as _
 
 
 class WoBoConnection(models.Model):
-    company = models.CharField(verbose_name=_('Company Name'), max_length=75)
-    admin_key = models.CharField(verbose_name='WoBo API Key for admin account', max_length=125)
+    company = models.ForeignKey(verbose_name=_('Company'), to='mailing_machine.WoBoCompany', on_delete=models.CASCADE)
     user = models.ForeignKey(verbose_name=_('Creator'), to='auth.User', on_delete=models.SET_NULL, null=True)
     file = models.FilePathField(verbose_name=_('Latest Export File'))
     date_created = models.DateTimeField(auto_now=True)
@@ -24,7 +23,7 @@ class WoBoCompany(models.Model):
     
 class WoBoTeam(models.Model):
     id = models.AutoField(verbose_name=_('WoBo Team ID'), primary_key=True)
-    name = models.CharField(verbose_name=_('Team Name'), max_length=125)
+    team_name = models.CharField(verbose_name=_('Team Name'), max_length=125)
     company = models.ForeignKey(verbose_name=_('Company'), to=WoBoCompany, on_delete=models.CASCADE, null=True)
     parent_team = models.ForeignKey(verbose_name=_('Parent Team'), to='mailing_machine.WoBoTeam',
                                     on_delete=models.CASCADE, blank=True, null=True)
@@ -32,6 +31,7 @@ class WoBoTeam(models.Model):
     sessionDate = models.DateField(verbose_name=_('Session Date'), null=True)
     preMailSent = models.BooleanField(verbose_name=_('Pre-session E-Mail sent'), default=False)
     postMailSent = models.BooleanField(verbose_name=_('Post-session E-Mail sent'), default=False)
+    members = models.ManyToManyField(to='mailing_machine.WoBoTeamMember')
     
     def __str__(self):
         
@@ -40,7 +40,7 @@ class WoBoTeam(models.Model):
         except AttributeError:
             cn = 'ERROR'
         
-        return '{} - {}'.format(self.name, cn)
+        return '{} - {}'.format(self.team_name, cn)
     
     
 class WoBoTeamMember(models.Model):

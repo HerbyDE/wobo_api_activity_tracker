@@ -9,7 +9,7 @@ from .models import *
 from .forms import *
 from .functions import *
 
-import datetime
+from datetime import datetime
 import os
 
 
@@ -26,18 +26,46 @@ def create_new_export(request):
     template = 'pages/create_wobo_output.html'
     context = dict()
     
-    form = CreateWoBoConnection()
+    form = CreateWoBoCompany()
+    context['companies'] = WoBoCompany.objects.all()
+    context['exports'] = WoBoConnection.objects.filter(user=request.user)
+    api_key = request.GET.get('api_key')
     
+    if api_key:
+        
+        try:
+            context['company'] = WoBoConnection.objects.get(company__api_key=api_key)
+            context['company'].file = build_data_sheet(api_key=api_key)
+            context['company'].file_update_date = datetime.now()
+            context['company'].save()
+            
+        except WoBoConnection.DoesNotExist:
+            wobo_connect = {
+                'company': WoBoCompany.objects.get(api_key=api_key),
+                'user': request.user,
+                'date_created': datetime.now(),
+                'file_update_date': datetime.now(),
+                'file': build_data_sheet(api_key=api_key)
+            }
+    
+            WoBoConnection.objects.get_or_create(**wobo_connect)
+        except IntegrityError or AttributeError or TypeError:
+            messages.error(request=request, message=_('Invalid API Key or non-existent key.'))
+
     if request.method == 'POST':
-        form = CreateWoBoConnection(request.POST)
+        form = CreateWoBoCompany(request.POST)
         
         if form.is_valid():
-            form = form.save(commit=False)
-            form.user = request.user
-            form.date_created = datetime.datetime.now()
-            form.file_update_date = datetime.datetime.now()
+            form = form.save(commit=True)
+            wobo_connect = {
+                'company': form,
+                'user': request.user,
+                'date_created': datetime.now(),
+                'file_update_date': datetime.now(),
+                'file': build_data_sheet(api_key=form.api_key)
+            }
             
-            form.file = build_data_sheet(api_key=form.admin_key)
+            WoBoConnection.objects.get_or_create(**wobo_connect)
             
             form.save()
             
@@ -45,106 +73,37 @@ def create_new_export(request):
             messages.error(request=request, message=_('The form is invalid...'))
 
     context['form'] = form
-    context['exports'] = WoBoConnection.objects.filter(user=request.user)
-
+    context['exports'] = WoBoConnection.objects.filter(user=request.user, company__api_key=api_key).order_by(
+        '-date_created')
+    
     return render(request=request, context=context, template_name=template)
 
 
 def schedule_sessions(request):
     
     context = dict()
-    
-    api_key = request.GET.get('api_key')
-    
-    if api_key:
-        company = WoBoCompany.objects.get_or_create(api_key=api_key)
-        context['company'] = company
-        context['users'] = get_users(api_key=api_key)['data']['user']
-        context['teams'] = WoBoTeam.objects.filter(company__api_key=api_key)
-        template = 'pages/schedule_sessions/overview.html'
-        
-    else:
-        template = 'pages/schedule_sessions/overview.html'
-        
+    api_key = None
     form = CreateWoBoCompany()
+    context['form'] = form
     
     if request.method == 'POST':
-        form = CreateWoBoCompany(request.POST)
-        post_api_key = request.POST.get('api_key')
-        context['users'] = get_users(api_key=post_api_key)['data']['user']
+        context['company'] = WoBoCompany.objects.get_or_create(api_key=api_key, company_name=request.POST.get('company_name'))
+        api_key = request.POST.get('api_key')
         
+    else:
+        api_key = request.GET.get('api_key')
         try:
-            context['company'] = WoBoCompany.objects.get(api_key=post_api_key)
-            messages.success(request=request, message=_('Company results fetched successfully.'))
+            context['company'] = WoBoCompany.objects.get(api_key=api_key)
         except WoBoCompany.DoesNotExist:
-            if form.is_valid():
-                form = form.save(commit=False)
-                form.save()
-                context['company'] = form
-                messages.success(request=request, message=_('Company created successfully.'))
-            else:
-    
-                messages.error(request=request, message=_('Invalid API Key. Please try again.'))
-
-        if context['company'] and context['users']:
-            data = get_teams(post_api_key)['data']['team']
-            output = list()
-            
-            for team in data:
-                        
-                t = {
-                    'id': int(team['team_id']),
-                    'name': team['team_name'],
-                    'manager': int(team['team_owner']),
-                    'company': context['company']
-                }
-                
-                try:
-                    t['parent_team'] = WoBoTeam.objects.get_or_create(pk=int(team['parent_team_id']))[0]
-                except TypeError:
-                    pass
-                except ValueError:
-                    pass
-                
-                try:
-                    team_inst = WoBoTeam.objects.get(pk=team['team_id'])
-                
-                    team_inst.name = team['team_name']
-                    team_inst.manager = int(team['team_owner'])
-                    team_inst.company = context['company']
-                    team_inst.save()
-                    output.append(team_inst)
-                    
-                except AttributeError:
-                    pass
-                    
-                except WoBoTeam.DoesNotExist:
-                    team_inst = WoBoTeam.objects.create(**t)
-                    output.append(team_inst)
-
-                for user in context['users']:
-                    u = {
-                        'id': user['user_id'],
-                        'first_name': user['first_name'],
-                        'last_name': user['last_name'],
-                        'email': user['email'],
-        
-                    }
-                    us = WoBoTeamMember.objects.get_or_create(**u)[0]
-                    
-                    try:
-                        us.teams.add(int(user['team_id']))
-                        us.save()
-                    except IntegrityError:
-                        pass
-                    
-            context['teams'] = output
-            
-        else:
             pass
-    
-        return HttpResponseRedirect('/schedule/?api_key={}'.format(post_api_key))
-     
-    context['form'] = form
         
+    if 'company' in context.keys():
+        context['teams'] = get_teams(api_key=api_key)
+        context['users'] = get_users(api_key=api_key)
+
+    template = 'pages/schedule_sessions/overview.html'
+    context['form'] = form
+    context['companies'] = WoBoCompany.objects.all()
+    context['org_chart'] = build_org_chart(api_key=api_key)
+    
     return render(request=request, context=context, template_name=template)

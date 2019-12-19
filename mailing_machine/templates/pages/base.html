@@ -18,10 +18,13 @@
     </a>
       <ul class="right hide-on-med-and-down">
         <li><a href="/">Home</a></li>
-        <li><a href="/export/">WoBo Exports</a></li>
-        <li>
-          {{ request.user.username }}
-          <i class="material-icons right">account_circle</i>
+        <li><a href="/export/">Export WoBo Data</a></li>
+        <li><a href="/schedule/">Schedule Sessions</a></li>
+        <li style="border-left: 1px solid white;">
+          <a href="/admin/">
+            {{ request.user.username }}
+            <i class="material-icons right">account_circle</i>
+          </a>
         </li>
       </ul>
 
@@ -73,8 +76,14 @@
   </footer>
 
   <!-- Compiled and minified JavaScript -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
   <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script>
+     $(document).ready(function(){
+      $('.collapsible').collapsible();
+      $('select').formSelect();
+    });
+  </script>
 
 </body>
 </html>

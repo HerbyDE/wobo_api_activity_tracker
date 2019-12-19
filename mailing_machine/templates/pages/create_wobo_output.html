@@ -9,30 +9,56 @@
 
       <div class="row">
         <div class="s12">
-          <h1>{% trans 'Get started now' %}</h1>
+          <h1 style="font-size: 1.5rem">{% trans 'Get started now' %}</h1>
           <p>Here you can create WoBo Excel exports to get an overview of what is going on at a certain client.</p>
         </div>
       </div>
 
       <div class="row center">
-        <div class="col s12 m4">
-          <form class="form-row center" method="post" action=".">
-            {% csrf_token %}
-            {% for field in form %}
-              <div class="input-field">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-              </div>
-            {% endfor %}
-
-            <div class="input-field">
-              <button type="submit" class="btn waves-effect waves-light">
-                Submit
-                <i class="material-icons right">send</i>
-              </button>
+        <div class="col s12">
+          <form class="form" method="get" action=".">
+            <div class="input-field col s12">
+              <label for="id_company">Select a company</label>
+              <select id="id_company" name="api_key">
+                <option disabled selected></option>
+                {% for company in companies %}
+                  <option value="{{ company.api_key }}">{{ company.company_name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn waves-effect waves-light"><i class="material-icons right">send</i> Export all data</button>
             </div>
-
           </form>
+        </div>
+      </div>
+      <br/>
+      <br/>
+      <br/>
+      <div class="row ">
+        <div class="col s12">
+          <ul class="collapsible">
+            <li>
+              <div class="collapsible-header"><i class="material-icons">filter_drama</i>Fetch a new company</div>
+              <div class="collapsible-body">
+                <form class="form-row center" method="post" action=".">
+                  {% csrf_token %}
+                  {% for field in form %}
+                    <div class="input-field">
+                      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                      {{ field }}
+                    </div>
+                  {% endfor %}
+
+                  <div class="input-field">
+                    <button type="submit" class="btn waves-effect waves-light">
+                      Submit
+                      <i class="material-icons right">send</i>
+                    </button>
+                  </div>
+
+                </form>
+              </div>
+            </li>
+          </ul>
         </div>
       </div>
 
@@ -42,12 +68,22 @@
             <thead>
               <tr>
                 <th>#</th>
+                <th>Company</th>
                 <th>Date</th>
                 <th>Author</th>
                 <th>File</th>
               </tr>
             </thead>
             <tbody>
+              {% for export in exports %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ export.company.company_name }}</td>
+                  <td>{{ export.date_created }}</td>
+                  <td>{{ export.user }}</td>
+                  <td><a href="{{ export.file }}" download target="_blank">Download</a></td>
+                </tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
@@ -56,4 +92,5 @@
     </div>
     <br><br>
   </div>
+
 {% endblock %}
