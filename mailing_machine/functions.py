@@ -15,9 +15,7 @@ import os
 
 # Create your views here.
 # Settings
-HERBERT_WOBO = '23bbb528dc93cc6ca0a1a828b3a99195a77dbfad'
-BRADLEY_WOBO = '848e37043e042ae16a97145c194d3d06cdb95572'
-SENDGRID_API = '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'
+API_KEY = "Goes here" #TODO: Add your API Key here.
 
 
 def establish_wobo_connection(model='team', identifier='', params={}, api_key=None):
@@ -298,5 +296,5 @@ def build_data_sheet(team=None, api_key=None):
 
 
 if __name__ == '__main__':
-    build_org_chart(api_key='23bbb528dc93cc6ca0a1a828b3a99195a77dbfad')
+    build_org_chart(api_key=API_KEY)
 
